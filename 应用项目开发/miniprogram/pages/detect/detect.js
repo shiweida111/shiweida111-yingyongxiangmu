@@ -276,5 +276,18 @@ Page({
     }
 
     wx.setStorageSync('detectRecords', records)
+  },
+
+  viewDetail: function () {
+    if (app.globalData.tempDetectResult) {
+      wx.navigateTo({
+        url: '/pages/result/result'
+      })
+    } else {
+      wx.showToast({
+        title: '暂无详情数据',
+        icon: 'none'
+      })
+    }
   }
 })
