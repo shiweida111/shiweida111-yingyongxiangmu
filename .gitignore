@@ -38,3 +38,7 @@ Thumbs.db
 .svn/
 .wx/
 .wxcache/
+
+# 旧的项目目录（避免重复上传）
+frontend/
+应用项目开发/
