@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>视觉证据提取与识别 - 深度分析工作站</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body{background:#f0f2f5; font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
+        .nav-header{background:#1a569d; color:#fff; padding:15px 0; border-bottom: 3px solid #14447a;}
+        .card-title-shield{border-left:4px solid #1a569d; padding-left:12px; font-weight:bold;}
+
+        .category-badge{cursor:pointer; opacity:0.6; border:2px solid #dee2e6; text-align:center; padding:15px; border-radius:10px; transition:0.3s; background: #fff;}
+        .category-badge.active{opacity:1; border-color:#1a569d; background:rgba(26,86,157,0.08); box-shadow: 0 4px 10px rgba(26,86,157,0.15);}
+
+        .ai-terminal{background:#1e1e1e; color:#00ff00; padding:15px; border-radius:8px; font-family:monospace; height:220px; overflow-y:auto; font-size:13px;}
+        .report-box{background:#fff; border-radius:8px; padding:20px; border:1px solid #dee2e6;}
+
+        /* 拖拽上传区样式 */
+        .drop-zone { border: 2px dashed #1a569d; border-radius: 10px; padding: 25px; text-align: center; background: #f8f9fa; transition: 0.3s; cursor: pointer; }
+        .drop-zone.dragover { background: #e9ecef; border-color: #0d6efd; }
+
+        /* 图片预览样式 */
+        #imagePreviewContainer { margin-bottom: 20px; text-align: center; display: none; }
+        #imagePreview { max-height: 300px; max-width: 100%; border-radius: 8px; cursor: zoom-in; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid #ddd; }
+
+        .police-intro-box { padding: 30px 10px; }
+        .police-step { border-left: 2px dashed #1a569d; padding-left: 25px; position: relative; margin-bottom: 30px; }
+        .police-step::before { content: ""; position: absolute; left: -9px; top: 0; width: 16px; height: 16px; background: #1a569d; border-radius: 50%; border: 3px solid #fff; }
+        .system-seal { position: absolute; bottom: 40px; right: 40px; opacity: 0.1; font-size: 10rem; pointer-events: none; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade { animation: fadeIn 0.8s ease-in-out; }
+        
+        /* 自定义橙色样式 */
+        .text-orange { color: #fd7e14 !important; }
+        .bg-orange { background-color: #fd7e14 !important; }
+    </style>
+</head>
+<body>
+
+<div class="nav-header">
+    <div class="container d-flex justify-content-between">
+        <h4><i class="bi bi-shield-shaded me-2"></i>大模型视觉取证分析引擎</h4>
+        <a href="/" class="btn btn-outline-light btn-sm">返回检测引擎</a>
+    </div>
+</div>
+
+<div class="container mt-4 mb-5">
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="card p-4 shadow-sm border-0 mb-4">
+                <h5 class="card-title-shield mb-4">取证参数配置</h5>
+
+                <div class="drop-zone mb-3" id="dropZone">
+                    <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
+                    <p class="mb-0 small fw-bold">点击或拖拽图像至此处上传</p>
+                    <input type="file" id="evidenceFile" hidden accept="image/*">
+                </div>
+
+                <div class="row g-2 mb-4">
+                    <div class="col-6"><div class="category-badge active" data-category="fraud"><i class="bi bi-bank fs-3 d-block"></i>涉诈识别</div></div>
+                    <div class="col-6"><div class="category-badge" data-category="gambling"><i class="bi bi-dice-5 fs-3 d-block"></i>涉赌识别</div></div>
+                    <div class="col-6"><div class="category-badge" data-category="pornography"><i class="bi bi-eye-slash fs-3 d-block"></i>涉黄识别</div></div>
+                    <div class="col-6"><div class="category-badge" data-category="deepfake"><i class="bi bi-person-badge fs-3 d-block"></i>深伪识别</div></div>
+                </div>
+                <label class="small fw-bold">分析引擎</label>
+                <select class="form-select mb-3" id="engineSelect">
+                    <option value="deepseek-vl-1.5">DeepSeek-VL 1.5 (硅基流动)</option>
+                    <option value="qwen-vl">Qwen-VL (硅基流动)</option>
+                </select>
+                <label class="small fw-bold">取证指令 (Prompt)</label>
+                <textarea id="promptInput" class="form-control mb-3" rows="5">请对该图像执行深度语义分析，重点完成以下任务：
+1. 风险要素识别
+诱导性文字：提取图像中所有文本内容（包括显性文字、水印、模糊文字等），判断是否存在以下诱导性特征：
+虚假承诺（如“高收益无风险”“秒到账”）、误导性宣传（如仿冒官方标识、伪造资质）、情感操控（如“紧急通知”“再不行动就晚了”）、隐私索取（如“填写银行卡号领奖”）等。
+敏感物体：识别图像中的关键物体/元素，判断是否涉及以下敏感类型：
+仿冒金融工具（假币、虚假票据）、非法标识（伪造公章/证件）、色情/暴力暗示、钓鱼链接载体（二维码、不明网址）、诈骗场景道具（如虚假交易界面、伪造聊天记录截图）等。
+2. “涉诈”风险综合判断
+基于上述识别结果，评估图像整体是否存在“涉嫌诈骗”风险，并按以下维度分别输出独立置信度（以百分比表示，精确到整数，0%=完全无风险，100%=确定涉诈，50%=疑似需人工复核）：
+诱导性文字风险置信度：仅针对文字内容的诈骗诱导风险；
+敏感物体风险置信度：仅针对物体/元素的诈骗关联风险；
+综合涉诈风险置信度：结合文字与物体的整体诈骗风险评级。
+3. 分析依据说明
+简要说明各风险维度的判断依据（如“诱导性文字包含‘低投入高回报’虚假承诺”“敏感物体为伪造的银行转账截图”），若某类风险置信度为0%，需明确标注“未发现相关风险要素”。</textarea>
+                <button class="btn btn-primary w-100 py-3 fw-bold" id="startBtn">启动取证分析任务</button>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card p-4 shadow-sm border-0 h-100" style="min-height: 650px; position: relative;">
+                <h5 class="card-title-shield mb-4">分析工作站</h5>
+
+                <div id="imagePreviewContainer" class="animate-fade">
+                    <div class="badge bg-secondary mb-2">待分析证据原件 (点击放大)</div>
+                    <img id="imagePreview" src="#" alt="预览图" data-bs-toggle="modal" data-bs-target="#imageModal">
+                </div>
+
+                <div id="emptyState" class="animate-fade">
+                    <div class="police-intro-box">
+                        <div class="police-step">
+                            <h6 class="fw-bold text-dark">第一阶段：全量要素提取</h6>
+                            <p class="small text-muted">自动识别图中二维码、虚拟账号、非法链接、公章、特殊话术等涉案关键要素。</p>
+                        </div>
+                        <div class="police-step">
+                            <h6 class="fw-bold text-dark">第二阶段：跨模态关联推理</h6>
+                            <p class="small text-muted">结合话术模版库，分析文字背后的心理诱导逻辑。</p>
+                        </div>
+                        <div class="police-step" style="border-left: none; margin-bottom: 0;">
+                            <h6 class="fw-bold text-dark">第三阶段：合法性证据生成</h6>
+                            <p class="small text-muted">基于 AI 分析结果自动整理为符合刑侦标准的证据摘要。</p>
+                        </div>
+                        <div class="system-seal"><i class="bi bi-shield-check"></i></div>
+                    </div>
+                </div>
+
+                <div id="loading" class="text-center py-5" style="display:none;">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                    <p class="mt-3 text-primary fw-bold">正在进行深度推理...</p>
+                </div>
+
+                <div id="resultContent" style="display:none;">
+                    <div class="ai-terminal mb-4" id="logBox"></div>
+                    <div class="report-box" id="reportArea"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="imageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content bg-dark border-0">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-0">
+                <img id="modalImg" src="#" style="max-width: 100%; max-height: 85vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const fileInput = document.getElementById('evidenceFile');
+    const dropZone = document.getElementById('dropZone');
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    const previewImg = document.getElementById('imagePreview');
+    const modalImg = document.getElementById('modalImg');
+    const emptyState = document.getElementById('emptyState');
+    const loading = document.getElementById('loading');
+    const resultContent = document.getElementById('resultContent');
+    const logBox = document.getElementById('logBox');
+    const reportArea = document.getElementById('reportArea');
+
+    function handleFile(file) {
+        if (file && file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                modalImg.src = e.target.result;
+                previewContainer.style.display = 'block';
+                document.querySelector('.police-intro-box').style.padding = '10px 10px';
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    dropZone.onclick = () => fileInput.click();
+    dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('dragover'); };
+    dropZone.ondragleave = () => dropZone.classList.remove('dragover');
+    dropZone.ondrop = (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) { fileInput.files = files; handleFile(files[0]); }
+    };
+    fileInput.onchange = (e) => handleFile(e.target.files[0]);
+
+    // 根据置信度值返回对应的颜色和图标
+    function getConfidenceStyle(confidence) {
+        const value = parseInt(confidence);
+        if (value >= 85) {
+            return { color: 'text-danger', icon: 'bi bi-exclamation-triangle-fill', bgColor: 'bg-danger' };
+        } else if (value >= 65) {
+            return { color: 'text-orange', icon: 'bi bi-exclamation-circle-fill', bgColor: 'bg-orange' };
+        } else if (value >= 45) {
+            return { color: 'text-warning', icon: 'bi bi-info-circle-fill', bgColor: 'bg-warning' };
+        } else if (value >= 25) {
+            return { color: 'text-primary', icon: 'bi bi-info-circle', bgColor: 'bg-primary' };
+        } else {
+            return { color: 'text-success', icon: 'bi bi-check-circle-fill', bgColor: 'bg-success' };
+        }
+    }
+
+    // 解析风险综合判断部分的内容，为置信度值添加颜色和图标
+    function formatConfidenceText(text) {
+        // 正则表达式匹配置信度值，例如："诱导文字风险置信度：98%" 或 "综合涉诈风险置信度：82%"
+        const confidenceRegex = /([^：]+)：\s*([0-9]+(?:\.[0-9]+)?)%/g;
+        let formattedText = text;
+        let match;
+        
+        // 查找所有置信度值并替换
+        while ((match = confidenceRegex.exec(text)) !== null) {
+            const fullMatch = match[0];
+            const label = match[1];
+            const value = match[2];
+            const style = getConfidenceStyle(value);
+            
+            // 替换为带有颜色和图标的版本
+            const replacement = `${label}：<span class="${style.color} fw-bold"><i class="${style.icon}"></i> ${value}%</span>`;
+            formattedText = formattedText.replace(fullMatch, replacement);
+        }
+        
+        return formattedText;
+    }
+
+    // 定义不同分类对应的默认prompt
+    const categoryPrompts = {
+        fraud: `请对该图像执行深度语义分析，重点完成以下任务：
+1. 风险要素识别
+诱导性文字：提取图像中所有文本内容（包括显性文字、水印、模糊文字等），判断是否存在以下诱导性特征：
+虚假承诺（如“高收益无风险”“秒到账”）、误导性宣传（如仿冒官方标识、伪造资质）、情感操控（如“紧急通知”“再不行动就晚了”）、隐私索取（如“填写银行卡号领奖”）等。
+敏感物体：识别图像中的关键物体/元素，判断是否涉及以下敏感类型：
+仿冒金融工具（假币、虚假票据）、非法标识（伪造公章/证件）、色情/暴力暗示、钓鱼链接载体（二维码、不明网址）、诈骗场景道具（如虚假交易界面、伪造聊天记录截图）等。
+2. “涉诈”风险综合判断
+基于上述识别结果，评估图像整体是否存在“涉嫌诈骗”风险，并按以下维度分别输出独立置信度（以百分比表示，精确到整数，0%=完全无风险，100%=确定涉诈，50%=疑似需人工复核）：
+诱导性文字风险置信度：仅针对文字内容的诈骗诱导风险；
+敏感物体风险置信度：仅针对物体/元素的诈骗关联风险；
+综合涉诈风险置信度：结合文字与物体的整体诈骗风险评级。
+3. 分析依据说明
+简要说明各风险维度的判断依据（如“诱导性文字包含‘低投入高回报’虚假承诺”“敏感物体为伪造的银行转账截图”），若某类风险置信度为0%，需明确标注“未发现相关风险要素”。`,
+        gambling: `请对该图像执行深度语义分析，重点完成以下任务：
+1. 风险要素识别
+诱导性文字：提取图像中所有可见文字（包括显性文本、水印、小字注释等），分析是否包含以下诱导性内容：
+赌博相关话术（如“投注”“赔率”“输赢”“充值返现”“高倍收益”等）；
+金钱交易暗示（如“充值”“提现”“兑换”“红包”“转账”等）；
+博彩平台/工具名称（如“彩票”“赌球”“棋牌”“百家乐”等谐音、变体表述）。
+敏感物体：识识别图像中是否存在与赌博高度相关的敏感物体/场景，包括但不限于：
+赌具（如扑克牌、骰子、筹码、轮盘、麻将牌等）；
+货币符号/大额现金、电子支付界面（如二维码、转账截图、余额显示等）；
+博彩场景模拟（如投注单、赔率表、开奖结果展示等）。
+2. “赌博”风险综合判断
+基于上述识别结果，评估图像整体是否存在“赌博”风险，并按以下维度分别输出独立置信度（以百分比表示，精确到整数，0%=完全无风险，100%=确定涉诈，50%=疑似需人工复核）：
+诱导性文字风险置信度：仅针对文字内容的赌博诱导风险；
+敏感物体风险置信度：仅针对物体/元素的赌博关联风险；
+综合赌博风险置信度：结合文字与物体的整体赌博风险评级。
+3. 分析依据说明
+简要说明各风险维度的判断依据（如“含‘高倍投注’诱导文字+筹码图像”“无任何赌博相关元素”），若某类风险置信度为0%，需明确标注“未发现相关风险要素”。`,
+        pornography: `请对以下图像进行多维度深度分析，具体任务要求如下：
+1. 内容识别与提取
+文本分析：识别图像中所有可见文字（包括显性文字、水印、模糊文本及隐含语义的符号/图案文字），重点判断是否存在具有诱导性、暗示性或挑逗性的表述（如低俗隐喻、性暗示语言、引导性链接/联系方式等）。
+物体识别：检测图像中的核心物体及场景元素，重点排查是否包含敏感物体（如暴露的人体部位、性相关道具、低俗服饰/姿势、违背公序良俗的场景等）。
+2. “色情”风险综合判断
+基于上述识别结果，评估图像整体是否存在“色情”风险，并按以下维度分别输出独立置信度（以百分比表示，精确到整数，0%=完全无风险，100%=确定涉诈，50%=疑似需人工复核）：
+诱导性文字风险置信度：仅针对文字内容的色情诱导风险；
+敏感物体风险置信度：仅针对物体/元素的色情关联风险；
+综合色情风险置信度：结合文字与物体的整体色情风险评级。
+3. 分析依据说明
+请简要列出判定依据（如关键文字内容、敏感物体特征、场景上下文等），确保风险评估的可解释性。`,
+        deepfake: `请对该图像执行深度语义分析，重点完成以下任务：
+1. 风险要素识别
+诱导性文字：识别图像中所有可见文字（含嵌入在图形、背景中的隐性文字），重点分析是否存在具有诱导性、误导性或暗示性的表述（如虚假承诺、混淆性标识、仿冒品牌话术等）。
+敏感物体：检测图像中是否包含法律法规或平台规则明确禁止/限制的敏感物体（如仿冒公章、虚假证件、违禁商品、政治敏感符号等），并列出具体物体类别及位置特征。
+2. “高仿”风险综合判断
+基于上述识别结果，评估图像整体是否存在“高仿”风险。“高仿”指通过AI生成（或其他技术手段伪造）的、与真实场景/物体/标识高度相似，可能导致视觉混淆或身份冒充的内容（如仿冒品牌LOGO、伪造官方文件、虚假人物肖像等）。按以下维度分别输出独立置信度（以百分比表示，精确到整数，0%=完全无风险，100%=确定高仿，50%=疑似需人工复核）：
+诱导性文字风险置信度：仅针对文字内容的高仿诱导风险；
+敏感物体风险置信度：仅针对物体/元素的高仿关联风险；
+综合高仿风险置信度：结合文字与物体的整体高仿风险评级。
+3. 分析依据说明
+简要说明各风险维度的判断依据（如：文字边缘模糊符合AI生成特征，敏感物体比例与真实场景偏差显著等），若某类风险置信度为0%，需明确标注“未发现相关风险要素”。
+`
+    };
+
+    document.querySelectorAll('.category-badge').forEach(el => {
+        el.onclick = () => {
+            document.querySelectorAll('.category-badge').forEach(i => i.classList.remove('active'));
+            el.classList.add('active');
+            
+            // 根据选中的分类更新prompt输入框
+            const category = el.getAttribute('data-category');
+            if (categoryPrompts[category]) {
+                document.getElementById('promptInput').value = categoryPrompts[category];
+            }
+        };
+    });
+
+    document.getElementById('startBtn').onclick = function() {
+        if(!fileInput.files[0]) return alert("请先上传待分析的证据图像");
+        emptyState.style.display = 'none';
+        loading.style.display = 'block';
+        resultContent.style.display = 'none';
+
+        // 获取当前选中的分类
+        const selectedCategory = document.querySelector('.category-badge.active').getAttribute('data-category');
+        
+        // 创建 FormData 并添加文件和参数
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('prompt', document.getElementById('promptInput').value);
+        formData.append('engine', document.getElementById('engineSelect').value); // 获取用户选择的引擎
+        formData.append('category', selectedCategory); // 添加选中的分类
+
+        // 模拟日志输出
+        resultContent.style.display = 'block';
+        const logs = [
+            "> [侦查指令] 启动多模态证据识别流...",
+            "> [要素提取] 正在解析图像特征空间...",
+            "> [OCR] 正在进行文字识别与语义分析...",
+            "> [语义] 正在进行深度语义推理...",
+            "> [风险] 正在生成取证报告..."
+        ];
+        let i = 0; logBox.innerHTML = '';
+        const timer = setInterval(() => {
+            if(i < logs.length) {
+                logBox.innerHTML += `<div>${logs[i++]}</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+            } else {
+                clearInterval(timer);
+                // 最后一条日志
+                logBox.innerHTML += `<div>> [完成] 正在加载大模型分析结果...</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }, 300);
+
+        // 发送 AJAX 请求到后端 API
+        fetch('/analyze_with_llm', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            loading.style.display = 'none';
+            
+            if(data.success) {
+                // 更新日志
+                logBox.innerHTML += `<div>> [完成] 大模型分析完成！</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+                
+                // 分割分析结果为三个部分并显示
+                const result = data.analysis_result;
+                let part1 = ""; // 风险要素识别
+                let part2 = ""; // 风险综合判断
+                let part3 = ""; // 分析依据说明
+                
+                // 使用更健壮的正则表达式匹配每个部分
+                // 匹配格式：数字. 标题：\n内容
+                const sectionRegex = /(\d+)\.\s*(风险要素识别|风险综合判断|分析依据说明)：\s*(.*?)(?=\n\s*\d+\.|$)/gs;
+                let match;
+                
+                while ((match = sectionRegex.exec(result)) !== null) {
+                    const [, number, title, content] = match;
+                    if (number === "1") {
+                        part1 = content.trim();
+                    } else if (number === "2") {
+                        part2 = content.trim();
+                    } else if (number === "3") {
+                        part3 = content.trim();
+                    }
+                }
+                
+                // 备用方案：如果正则匹配失败，尝试简单的字符串分割
+                if (!part1 && !part2 && !part3) {
+                    const parts = result.split(/\n\s*\d+\.\s*/);
+                    if (parts.length >= 4) {
+                        part1 = parts[1].replace(/^风险要素识别：/, "").trim();
+                        part2 = parts[2].replace(/^风险综合判断：/, "").trim();
+                        part3 = parts[3].replace(/^分析依据说明：/, "").trim();
+                    } else {
+                        // 如果所有分割方法都失败，将完整结果显示在第一部分
+                        part1 = result;
+                    }
+                }
+                
+                // 显示分析结果在三个不同的框中
+                reportArea.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-primary fw-bold mb-0"><i class="bi bi-file-earmark-medical me-2"></i>证据分析摘要 (Forensics Summary)</h6>
+                    </div>
+                    
+                    <!-- 第一部分：风险要素识别 -->
+                    <div class="mb-4 p-4 bg-light border-start border-3 border-primary rounded-end shadow-sm">
+                        <h6 class="fw-bold mb-3 text-primary"><i class="bi bi-search me-1"></i>风险要素识别</h6>
+                        <pre class="mb-0" style="white-space: pre-wrap; font-family: 'PingFang SC','Microsoft YaHei',sans-serif;">${part1}</pre>
+                    </div>
+                    
+                    <!-- 第二部分：风险综合判断 -->
+                    <div class="mb-4 p-4 bg-light border-start border-3 border-warning rounded-end shadow-sm">
+                        <h6 class="fw-bold mb-3 text-warning"><i class="bi bi-bar-chart-line me-1"></i>风险综合判断</h6>
+                        <div class="mb-0" style="white-space: pre-wrap; font-family: 'PingFang SC','Microsoft YaHei',sans-serif;">${formatConfidenceText(part2)}</div>
+                    </div>
+                    
+                    <!-- 第三部分：分析依据说明 -->
+                    <div class="mb-4 p-4 bg-light border-start border-3 border-info rounded-end shadow-sm">
+                        <h6 class="fw-bold mb-3 text-info"><i class="bi bi-lightbulb me-1"></i>分析依据说明</h6>
+                        <pre class="mb-0" style="white-space: pre-wrap; font-family: 'PingFang SC','Microsoft YaHei',sans-serif;">${part3}</pre>
+                    </div>
+                `;
+            } else {
+                // 显示错误信息
+                logBox.innerHTML += `<div class="text-danger">> [错误] ${data.message}</div>`;
+                logBox.scrollTop = logBox.scrollHeight;
+                
+                reportArea.innerHTML = `
+                    <div class="alert alert-danger" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        ${data.message}
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            logBox.innerHTML += `<div class="text-danger">> [错误] 分析请求失败: ${error.message}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+            
+            reportArea.innerHTML = `
+                <div class="alert alert-danger" role="alert">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    分析请求失败: ${error.message}
+                </div>
+            `;
+        });
+    };
+
+    function showFinalReport() {
+        reportArea.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="text-primary fw-bold mb-0"><i class="bi bi-file-earmark-medical me-2"></i>证据分析摘要 (Forensics Summary)</h6>
+                <span class="badge bg-danger pulse">极高风险</span>
+            </div>
+
+            <div class="mb-4">
+                <small class="fw-bold d-block mb-2 text-secondary text-uppercase" style="letter-spacing:1px;">
+                    <i class="bi bi-search me-1"></i> 风险要素识别
+                </small>
+
+                <div class="row g-2">
+                    <div class="col-md-7">
+                        <div class="p-3 bg-light border-start border-3 border-primary rounded-end h-100 shadow-sm">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-primary me-2">文本特征提取</span>
+                                <strong class="small text-dark">命中高危语义逻辑</strong>
+                            </div>
+                            <div class="small text-dark">
+                                <div class="mb-2">
+                                    <span class="badge border border-danger text-danger fw-normal" style="font-size:10px">制造紧迫感</span>
+                                    <span class="ms-1 fw-bold">"名额稀缺"、"仅剩几位"</span>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="badge border border-danger text-danger fw-normal" style="font-size:10px">话术诱导</span>
+                                    <span class="ms-1">"文哥在等你" (建立虚假信任)</span>
+                                </div>
+                                <div class="mb-2">
+                                    <span class="badge border border-danger text-danger fw-normal" style="font-size:10px">敏感询问</span>
+                                    <span class="ms-1 text-danger fw-bold">"能动用多少资金" (关键路径)</span>
+                                </div>
+                                <div class="mt-2 text-muted px-2 py-1 bg-white border border-dashed rounded" style="font-size:11px; line-height:1.4;">
+                                    <i class="bi bi-info-circle me-1"></i>分析结论：话术序列完全符合诈骗链路中的“资产摸底”阶段特征。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-5">
+                        <div class="p-3 bg-light border-start border-3 border-warning rounded-end h-100 shadow-sm">
+                            <div class="d-flex align-items-center mb-2">
+                                <span class="badge bg-warning text-dark me-2">视觉特征提取</span>
+                                <strong class="small text-dark">物理环境分析</strong>
+                            </div>
+                            <ul class="list-unstyled small mb-0">
+                                <li class="mb-2 d-flex align-items-start">
+                                    <i class="bi bi-chat-left-dots-fill text-warning me-2"></i>
+                                    <span>非公开聊天场景，具备强隐蔽诱导性</span>
+                                </li>
+                                <li class="mb-2 d-flex align-items-start">
+                                    <i class="bi bi-shield-exclamation text-warning me-2"></i>
+                                    <span>未见官方权威标识，背景元素存疑</span>
+                                </li>
+                                <li class="text-muted mt-2 pt-2 border-top" style="font-size:11px; font-style:italic;">
+                                    注：二维码/银行账户检出：无
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="table table-sm small mb-0 border shadow-sm rounded overflow-hidden">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">评估维度</th>
+                        <th class="text-center">风险量化</th>
+                        <th class="text-end pe-3">判定状态</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="ps-3">语义话术风险</td>
+                        <td class="text-center">
+                            <div class="progress mt-1" style="height: 6px; width:80px; display:inline-flex;">
+                                <div class="progress-bar bg-danger" style="width: 98%"></div>
+                            </div>
+                            <span class="ms-1 text-danger fw-bold">98%</span>
+                        </td>
+                        <td class="text-end pe-3 text-danger"><i class="bi bi-exclamation-triangle-fill"></i></td>
+                    </tr>
+                    <tr>
+                        <td class="ps-3">视觉特征风险</td>
+                        <td class="text-center">
+                            <div class="progress mt-1" style="height: 6px; width:80px; display:inline-flex;">
+                                <div class="progress-bar bg-orange" style="width: 82%"></div>
+                            </div>
+                            <span class="ms-1 text-orange fw-bold">82%</span>
+                        </td>
+                        <td class="text-end pe-3 text-orange"><i class="bi bi-exclamation-circle-fill"></i></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td class="ps-3"><strong>综合研判结果</strong></td>
+                        <td colspan="2" class="text-end pe-3">
+                            <strong class="text-danger fs-6">95.5% <i class="bi bi-exclamation-triangle-fill"></i> (建议紧急阻断)</strong>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+    }
+</script>
+</body>
+</html>

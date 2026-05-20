@@ -1,0 +1,40 @@
+# 虚拟环境
+.venv/
+env/
+venv/
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+
+# 缓存文件
+__pycache__/
+*.pyc
+*.pyo
+
+# 上传文件目录
+uploads/
+
+# 小程序配置
+project.private.config.json
+miniprogram_npm/
+node_modules/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp
+
+# 微信开发者工具
+.svn/
+.wx/
+.wxcache/

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国人民公安大学 - 轻量级 AI 图像检测与隐私审计平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --paupp-blue: #1a569d; --paupp-dark: #14447a; }
+        body{background:#f4f7f9;color:#333;padding-bottom:80px;font-family:'PingFang SC','Microsoft YaHei',sans-serif;}
+        .header{background:var(--paupp-blue);color:#fff;padding:18px 0;border-bottom:3px solid var(--paupp-dark);box-shadow:0 2px 10px rgba(0,0,0,.1);}
+
+        .panel{background:#fff;border-radius:12px;padding:25px;margin-bottom:25px;border:1px solid #dee2e6;box-shadow:0 4px 12px rgba(0,0,0,.05); transition: all 0.3s ease;}
+        .panel h5{color:var(--paupp-blue);font-weight:bold;border-left:4px solid var(--paupp-blue);padding-left:10px;margin-bottom:18px;}
+
+        /* 上传区域 */
+        .upload-box { border: 2px dashed #dee2e6; border-radius: 10px; padding: 30px 20px; text-align: center; background: #fbfbfb; cursor: pointer; transition: 0.3s; }
+        .upload-box:hover { border-color: var(--paupp-blue); background: #f0f7ff; }
+
+        /* 结果展示 */
+        #previewImage{width:100%;border-radius:8px;border:1px solid #dee2e6;max-height:350px;object-fit:contain;background:#f8f9fa;cursor: zoom-in;}
+        .result-prob{font-size:2.8rem;font-weight:800; line-height: 1;}
+        .feature-item{background:#f8f9fa;border-radius:6px;padding:8px 12px;border:1px solid #e9ecef;font-family:Consolas,monospace; font-size: 0.85rem;}
+        .feature-val{color:var(--paupp-blue);font-weight:bold;}
+        .risk-alert{border-left:5px solid;background:#fdfdfe;}
+
+        /* 空状态占位 */
+        .empty-placeholder { padding: 60px 20px; text-align: center; }
+        .empty-icon { font-size: 4rem; color: #e9ecef; margin-bottom: 20px; }
+        .capability-card { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 15px; transition: 0.3s; height: 100%; }
+        .capability-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
+        .capability-card i { font-size: 1.5rem; color: var(--paupp-blue); display: block; margin-bottom: 10px; }
+
+        .chart-container{height:300px; position: relative;}
+        .fixed-footer{position:fixed;bottom:0;width:100%;background:#fff;padding:14px;font-size:.9rem;border-top:1px solid #dee2e6; z-index: 100;}
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade { animation: fadeIn 0.5s ease-out forwards; }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-shield-check-fill me-2 fs-3"></i>
+            <h4 class="mb-0">图像检测 - {{ title }}</h4>
+        </div>
+        <a href="/" class="btn btn-outline-light btn-sm px-3 shadow-sm">返回决策入口</a>
+    </div>
+</header>
+
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel">
+                <h5>数据输入</h5>
+                <form id="detectionForm">
+                    <div class="mb-4">
+                        <label class="small text-muted mb-2">上传待检测图像</label>
+                        <div class="upload-box" onclick="document.getElementById('imageFile').click()">
+                            <i class="bi bi-cloud-arrow-up fs-2 text-muted"></i>
+                            <div class="small mt-2 text-secondary">点击或拖拽文件至此</div>
+                            <input id="imageFile" class="form-control d-none" type="file" name="file" accept="image/*" required>
+                        </div>
+                        <div id="fileNameDisplay" class="small text-primary mt-2 fw-bold text-center" style="display:none;"></div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="small text-muted mb-2">识别引擎</label>
+                        <select name="model_type" class="form-select border-primary-subtle">
+                            <option value="xgb" {{ 'selected' if mode=='ml' }}>机器学习模型 (高精度分析)</option>
+                            <option value="heuristic" {{ 'selected' if mode=='rule' }}>启发式模型 (实时响应)</option>
+                        </select>
+                    </div>
+
+                    <div class="d-grid">
+                        <button id="submitBtn" class="btn btn-primary py-3 fw-bold shadow-sm">
+                            <i class="bi bi-search me-1"></i> 开始检测分析
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="panel py-3 bg-light border-0">
+                <div class="d-flex align-items-center text-muted small">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <span>支持 JPG, PNG, WEBP 格式。文件大小建议不超过 10MB。</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="panel" style="min-height:600px;">
+                <h5>实时检测报告</h5>
+
+                <div id="emptyState" class="empty-placeholder animate-fade">
+                    <i class="bi bi-images empty-icon"></i>
+                    <h4 class="text-dark fw-bold">等待数据注入</h4>
+                    <p class="text-muted mx-auto mb-5" style="max-width: 450px;">
+                        请在左侧上传待审计的图像文件。系统将进行多维度 AI 伪造检测、频谱分析及隐私合规性扫描。
+                    </p>
+
+                    <div class="row g-3 text-center">
+                        <div class="col-md-4">
+                            <div class="capability-card">
+                                <i class="bi bi-fingerprint"></i>
+                                <h6 class="fw-bold">真伪鉴别</h6>
+                                <p class="small text-muted mb-0">特征库比对，识别生成式 AI 痕迹</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="capability-card">
+                                <i class="bi bi-eye-slash"></i>
+                                <h6 class="fw-bold">隐私合规</h6>
+                                <p class="small text-muted mb-0">自动识别面部、证件、车牌等敏感隐私泄露风险</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="capability-card">
+                                <i class="bi bi-activity"></i>
+                                <h6 class="fw-bold">频谱取证</h6>
+                                <p class="small text-muted mb-0">通过傅里叶变换检测图像频域中的非自然规律</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="resultArea" style="display:none;" class="animate-fade">
+                    <div class="row mb-4">
+                        <div class="col-md-5 text-center">
+                            <img id="previewImage" class="shadow-sm border">
+                            <div class="mt-2"><span class="badge bg-dark-subtle text-dark">原始取证素材</span></div>
+                        </div>
+                        <div class="col-md-7">
+                            <div class="small text-muted mb-1 text-uppercase tracking-wider">AI 生成概率指数</div>
+                            <div id="probVal" class="result-prob">0%</div>
+                            <h4 id="resultDesc" class="fw-bold mt-2">——</h4>
+                            <hr class="my-3">
+                            <div id="riskBox" class="alert risk-alert p-3 shadow-sm border">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-dark"><i class="bi bi-exclamation-triangle me-1"></i> 隐私风险评估</span>
+                                    <span id="riskScoreBadge" class="badge bg-secondary">风险分: 0</span>
+                                </div>
+                                <ul id="riskDetails" class="small mb-0 ps-3 mt-2 text-muted"></ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5 class="mb-3">多维度取证分布 (Radar)</h5>
+                            <div class="chart-container mb-4"><canvas id="radarChart"></canvas></div>
+                        </div>
+                        <div class="col-md-12">
+                            <h5 class="mb-2">关键特征量化详情</h5>
+                            <div id="featureContainer" class="row row-cols-1 row-cols-md-2 g-2 mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white py-2">
+                <small class="modal-title">取证大图查看</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-2 bg-secondary-subtle">
+                <img id="modalImage" src="" style="max-width: 100%; height: auto;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="fixed-footer text-center text-muted">
+    <div class="container">
+        © 2025 中国人民公安大学 - 打防网络犯罪工程技术研究中心
+        <span class="mx-2">|</span>
+        <span class="text-primary-emphasis">网络空间安全实验室</span>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let radarChartInst = null;
+const imageModal = new bootstrap.Modal(document.getElementById('imageModal'));
+const imageFileInput = document.getElementById('imageFile');
+const fileNameDisplay = document.getElementById('fileNameDisplay');
+
+previewImage.onclick = () => { if(previewImage.src) { modalImage.src = previewImage.src; imageModal.show(); } };
+
+imageFileInput.onchange = e => {
+    if(e.target.files[0]) {
+        const file = e.target.files[0];
+        previewImage.src = URL.createObjectURL(file);
+        fileNameDisplay.innerText = "已选择: " + file.name;
+        fileNameDisplay.style.display = "block";
+    }
+};
+
+detectionForm.onsubmit = async e => {
+    e.preventDefault();
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>分析中...';
+    submitBtn.disabled = true;
+
+    try {
+        const res = await fetch('/detect', {method:'POST', body:new FormData(detectionForm)});
+        const data = await res.json();
+        if(data.success) renderResults(data);
+    } catch (err) {
+        console.error(err);
+    } finally {
+        submitBtn.innerHTML = '<i class="bi bi-search me-1"></i> 开始检测分析';
+        submitBtn.disabled = false;
+    }
+};
+
+function renderResults(data){
+    emptyState.style.display='none';
+    resultArea.style.display='block';
+
+    const prob = parseFloat(data.prob_fake);
+    probVal.innerText = (prob*100).toFixed(1)+'%';
+    probVal.style.color = prob >= 0.5 ? '#dc3545' : '#198754';
+
+    resultDesc.innerText = (prob >= 0.5 ? "警报: 存在伪造嫌疑" : "正常: 未见明显异常");
+    resultDesc.style.color = probVal.style.color;
+
+    riskScoreBadge.innerText="风险分: "+data.risk_score;
+    riskScoreBadge.className = data.risk_score > 60 ? "badge bg-danger" : "badge bg-success";
+
+    riskDetails.innerHTML = data.risk_details.map(x=>`<li>${x}</li>`).join('');
+
+    featureContainer.innerHTML='';
+    Object.entries(data.norm_features).forEach(([k,v])=>{
+        featureContainer.innerHTML+=`
+            <div class="col">
+                <div class="feature-item d-flex justify-content-between">
+                    <span class="text-muted">${k}</span>
+                    <span class="feature-val">${v}</span>
+                </div>
+            </div>`;
+    });
+
+    updateRadarChart(Object.keys(data.radar_features), Object.values(data.radar_features));
+}
+
+function updateRadarChart(labels, values){
+    const ctx=document.getElementById('radarChart').getContext('2d');
+    if(radarChartInst) radarChartInst.destroy();
+    radarChartInst=new Chart(ctx,{
+        type:'radar',
+        data:{
+            labels,
+            datasets:[{
+                label: '特征分布',
+                data:values,
+                fill:true,
+                backgroundColor:'rgba(26,86,157,.2)',
+                borderColor:'#1a569d',
+                pointBackgroundColor: '#1a569d'
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            scales:{
+                r:{
+                    beginAtZero:true,
+                    min:0,
+                    max:1,
+                    ticks: { display: false },
+                    pointLabels: { font: { size: 13, weight: 'bold' }, color: '#444' }
+                }
+            },
+            plugins:{ legend:{display:false} }
+        }
+    });
+}
+</script>
+</body>
+</html>

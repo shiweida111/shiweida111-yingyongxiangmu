@@ -1,0 +1,24 @@
+<view class="container">
+  <view class="back-btn" bindtap="goBack">
+    <text class="back-icon">←</text>
+    <text class="back-text">返回</text>
+  </view>
+
+  <view class="loading-container" wx:if="{{!detectResult}}">
+    <view class="loading-spinner"></view>
+    <text class="loading-text">加载结果中...</text>
+  </view>
+
+  <view class="result-content" wx:else>
+    <view class="analysis-section" wx:if="{{detectResult.analysis_result}}">
+      <text class="section-title">分析报告</text>
+      <view class="analysis-content">
+        <rich-text nodes="{{formattedAnalysisResult}}"></rich-text>
+      </view>
+    </view>
+
+    <view class="action-section">
+      <button class="action-btn primary" bindtap="goBack">返回检测</button>
+    </view>
+  </view>
+</view>

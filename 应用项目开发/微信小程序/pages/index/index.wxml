@@ -1,0 +1,58 @@
+<view class="container">
+  <view class="card">
+    <view class="header">
+      <text class="title">诈骗软件识别工具</text>
+      <text class="subtitle">上传软件截图，AI帮您初步判断是否为诈骗软件</text>
+    </view>
+
+    <view class="upload-area" bindtap="chooseImage" wx:if="{{!selectedImage}}">
+      <view class="upload-icon">
+        <view class="icon-plus"></view>
+      </view>
+      <text class="upload-text">点击或拍照上传软件截图</text>
+      <text class="upload-hint">支持 PNG, JPG, BMP, WebP 格式（最大20MB）</text>
+    </view>
+
+    <view wx:else>
+      <image src="{{selectedImage}}" mode="widthFix" class="preview-img"></image>
+      <text class="filename">{{fileName}}</text>
+      <button class="btn-clear" bindtap="clearImage">清除图片</button>
+    </view>
+
+    <button class="btn-primary" bindtap="analyzeImage" disabled="{{!selectedImage || isLoading}}" wx:if="{{!showResult}}">
+      <text wx:if="{{!isLoading}}">开始分析</text>
+      <view wx:else>
+        <view class="spinner"></view>
+        <text style="margin-left: 20rpx;">分析中...</text>
+      </view>
+    </button>
+  </view>
+
+  <view class="card" wx:if="{{showResult}}">
+    <scroll-view scroll-y style="height: 100%;">
+      <view class="result-content">
+        <view wx:for="{{resultSections}}" wx:key="index" class="section">
+          <view class="section-title">{{item.title}}</view>
+          <view wx:for="{{item.content}}" wx:key="idx" class="list-item">
+            <text>{{item}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="warning-box">
+        <text class="warning-title">⚠️ 温馨提示</text>
+        <text class="warning-text">如果发现软件可疑，请立即停止使用！不要向陌生软件转账或提供个人信息。如已受骗，请尽快报警并联系银行。</text>
+      </view>
+
+      <button class="btn-secondary" bindtap="reset">分析下一张</button>
+    </scroll-view>
+  </view>
+
+  <view class="card tips-area">
+    <text class="tips-title">💡 使用提示</text>
+    <view class="tips-list">
+      <text class="tip-item">• 请上传清晰的软件界面截图</text>
+      <text class="tip-item">• 本工具仅供参考，不能替代官方安全检测</text>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,34 @@
+<view class="container">
+  <view class="empty-tip" wx:if="{{records.length === 0}}">
+    <view class="empty-icon">📋</view>
+    <text class="empty-text">暂无分析记录</text>
+    <text class="empty-hint">快去进行首次分析吧</text>
+  </view>
+
+  <view class="record-list" wx:else>
+    <view class="record-item" wx:for="{{records}}" wx:key="id" bindtap="viewDetail" data-record="{{item}}">
+      <view class="record-header">
+        <view class="record-type {{item.type}}">
+          <text class="type-icon">{{item.typeIcon}}</text>
+          <text class="type-text">{{item.typeName}}</text>
+        </view>
+        <text class="record-time">{{item.time}}</text>
+      </view>
+
+      <view class="record-content">
+        <image class="record-image" src="{{item.imageUrl}}" mode="aspectFill" bindtap="previewImage" data-url="{{item.imageUrl}}" />
+        <view class="record-result">
+          <text class="result-label">分析结果</text>
+          <text class="result-text">{{item.displayResult}}</text>
+        </view>
+      </view>
+      <view class="record-arrow">
+        <text class="arrow-icon">→</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="clear-btn" wx:if="{{records.length > 0}}" bindtap="clearHistory">
+    <text class="clear-text">清空记录</text>
+  </view>
+</view>

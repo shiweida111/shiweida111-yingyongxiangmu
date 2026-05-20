@@ -1,0 +1,17 @@
+[project]
+name = "code-1227"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "flask>=3.1.2",
+    "joblib>=1.5.3",
+    "numpy>=2.4.1",
+    "openai",
+    "opencv-python>=4.11.0.86",
+    "pandas>=2.3.3",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.8.0",
+    "werkzeug>=3.1.5",
+    "xgboost>=3.1.3",
+]
