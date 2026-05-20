@@ -1,0 +1,66 @@
+<view class="container" style="--font-scale: {{fontScale || 1}};">
+  <view class="tip-bubble">
+    <view class="tip-icon">💡</view>
+    <view class="tip-content">
+      <text class="tip-title">使用提示</text>
+      <text class="tip-text">{{detectType === 'chat_fraud' ? '选择聊天记录截图后点击"开始检测"，系统将分析是否存在诈骗风险' : detectType === 'fraud' ? '选择程序界面截图后点击"开始检测"，系统将分析是否存在诈骗风险' : '选择图片后点击"开始检测"，系统将自动分析并显示结果'}}</text>
+    </view>
+  </view>
+
+  <view class="upload-area" bindtap="chooseImage" wx:if="{{!selectedImage}}">
+    <view class="upload-icon">📷</view>
+    <text class="upload-text">点击选择{{detectType === 'chat_fraud' ? '聊天截图' : detectType === 'fraud' ? '截图' : '图像'}}</text>
+    <text class="upload-hint">支持 JPG、PNG 格式，大小不超过 20MB</text>
+  </view>
+
+  <view class="preview-area" wx:if="{{selectedImage}}">
+    <image class="preview-image" src="{{selectedImage}}" mode="aspectFill" />
+    <view class="preview-actions">
+      <view class="action-btn" bindtap="chooseImage">
+        <text class="action-icon">📷</text>
+        <text class="action-text">重新选择</text>
+      </view>
+      <view class="action-btn" bindtap="clearImage">
+        <text class="action-icon">🗑️</text>
+        <text class="action-text">清除</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="detect-section">
+    <button
+      class="detect-btn {{!selectedImage || isDetecting ? 'disabled' : ''}}"
+      bindtap="startDetection"
+      disabled="{{!selectedImage || isDetecting}}"
+    >
+      <text wx:if="{{!isDetecting}}">开始检测</text>
+      <view wx:else class="loading-text">
+        <text class="loading-dot">.</text>
+        <text class="loading-dot">.</text>
+        <text class="loading-dot">.</text>
+      </view>
+    </button>
+    <view class="upload-progress" wx:if="{{uploadProgress > 0}}">
+      <view class="progress-bar">
+        <view class="progress-fill" :style="{ width: uploadProgress + '%' }"></view>
+      </view>
+      <text class="progress-text">{{uploadProgress >= 100 ? '分析中' : '上传中'}} {{uploadProgress}}%</text>
+    </view>
+  </view>
+
+  <view class="analysis-result" wx:if="{{analysisResult}}">
+    <view class="result-summary">
+      <text class="summary-label">{{detectType === 'chat_fraud' ? '💬 聊天风险分析报告' : detectType === 'fraud' ? '🛡️ 风险分析报告' : '📝 分析总结'}}</text>
+      <rich-text wx:if="{{detectType === 'fraud' || detectType === 'chat_fraud'}}" nodes="{{analysisResult.formattedSummary}}"></rich-text>
+      <text wx:else class="summary-content">{{analysisResult.summary}}</text>
+    </view>
+    <view class="result-actions">
+      <view class="action-btn-secondary" bindtap="clearAnalysis">
+        <text>清除结果</text>
+      </view>
+      <view class="action-btn-primary" bindtap="viewDetail">
+        <text>查看详情</text>
+      </view>
+    </view>
+  </view>
+</view>

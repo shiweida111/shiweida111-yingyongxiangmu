@@ -2,13 +2,11 @@
 
 一个微信小程序，用于识别图像真伪和涉诈风险内容。
 
-## 项目结构
+## 📁 项目结构
 
 ```
 应用项目开发111/
-├── backend/           # 后端代码
-│   └── app.py         # Flask 后端服务
-├── frontend/          # 前端代码（微信小程序）
+├── miniprogram/        # 微信小程序前端（实际使用）
 │   ├── app.js         # 小程序入口文件
 │   ├── app.json       # 小程序配置
 │   ├── app.wxss       # 全局样式
@@ -24,8 +22,36 @@
 │   │   └── history-detail/  # 历史详情
 │   └── utils/         # 工具函数
 │       └── i18n.js    # 国际化配置
+├── backend/           # 后端API服务
+│   ├── 3_app.py       # Flask 后端服务主程序
+│   ├── app.py         # Flask 后端服务
+│   ├── analyze_image.py   # 图像分析模块
+│   ├── scam_detector.py   # 涉诈检测模块
+│   ├── report_generator.py  # 报告生成模块
+│   ├── scam_check_web.py    # Web 涉诈检查
+│   ├── gen_detector_xgb.joblib  # XGBoost检测模型
+│   ├── requirements.txt   # Python依赖
+│   ├── pyproject.toml  # 项目配置
+│   └── uv.lock        # 依赖锁定文件
 ├── docs/              # 文档目录
-└── .gitignore         # Git 忽略配置
+│   └── DEPLOYMENT.md  # 部署文档
+├── tests/             # 测试文件
+│   ├── test_api.py       # API测试
+│   ├── test_llm.py       # LLM测试
+│   ├── test_features.py   # 特征测试
+│   ├── test_data_flow.py # 数据流程测试
+│   ├── test_response.py # 响应测试
+│   └── test_js_logic.js # JS逻辑测试
+├── tools/             # 工具脚本
+│   ├── 1_train_and_eval_xgb.py  # 训练XGBoost模型
+│   ├── 2_detect_image_xgb.py   # 使用XGBoost检测
+│   ├── generate_icons.py          # 图标生成工具
+│   └── unit/                   # 单元工具模块
+├── data/              # 数据文件
+│   ├── test_images/   # 测试图片
+│   └── templates/     # HTML模板
+├── README.md         # 项目说明
+└── .gitignore       # Git忽略配置
 ```
 
 ## 功能特性
@@ -50,20 +76,29 @@
 - **后端**: Flask (Python)
 - **API**: OpenAI API (Qwen/Qwen3.6-35B-A3B)
 
-## 快速开始
+## 🚀 快速开始
 
 ### 后端启动
 
 ```bash
 cd backend
-python app.py
+python 3_app.py
 ```
 
 ### 前端开发
 
-1. 使用微信开发者工具打开 `frontend` 目录
+1. 使用微信开发者工具打开 `miniprogram` 目录
 2. 配置小程序 AppID
 3. 编译运行
+
+## 📋 目录说明
+
+- **miniprogram/** - 微信小程序前端，这是你日常开发的主要目录
+- **backend/** - 后端API服务，处理图像检测和分析请求
+- **docs/** - 项目文档，包括部署指南
+- **tests/** - 测试文件，用于验证功能是否正常
+- **tools/** - 辅助工具脚本
+- **data/** - 测试数据和模板文件
 
 ## 配置说明
 
